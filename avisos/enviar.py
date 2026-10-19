@@ -78,7 +78,13 @@ def mes_por_extenso(mes):  # "2026-10" -> "outubro de 2026"
 def token_acesso():
     from google.oauth2 import service_account
     from google.auth.transport.requests import Request
-    info = json.loads(os.environ["FIREBASE_CONTA_SERVICO"])
+    bruto = os.environ.get("FIREBASE_CONTA_SERVICO", "").strip()
+    if not bruto:
+        raise RuntimeError("o segredo FIREBASE_CONTA_SERVICO não está configurado neste repositório (Settings › Secrets and variables › Actions)")
+    try:
+        info = json.loads(bruto)
+    except json.JSONDecodeError:
+        raise RuntimeError("o segredo FIREBASE_CONTA_SERVICO não é um JSON válido: cole o conteúdo inteiro do arquivo .json, do { ao }")
     cred = service_account.Credentials.from_service_account_info(info, scopes=["https://www.googleapis.com/auth/firebase.messaging"])
     cred.refresh(Request())
     return cred.token
