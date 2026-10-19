@@ -1,0 +1,56 @@
+# Avisos automáticos da Calculadora do Projetista (Firebase Cloud Messaging).
+#  A) vídeo novo do canal com #KPC no título ou na descrição  -> tópico "novidades"
+#  B) precos.json de um mês novo                               -> tópico "precos"
+# No máximo 1 aviso automático por semana (A + B). Regras em avisos/enviar.py.
+# A chave fica no segredo FIREBASE_CONTA_SERVICO (Settings › Secrets and variables › Actions).
+name: Avisos do app
+
+on:
+  schedule:
+    - cron: "17 */2 * * *"   # a cada 2 horas
+  push:
+    branches: [main]
+    paths: ["precos.json"]
+  workflow_dispatch:
+    inputs:
+      simular:
+        description: "Só simular (mostra o que mandaria, sem enviar)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write   # só para gravar avisos/estado.json
+
+concurrency:
+  group: avisos
+  cancel-in-progress: false
+
+jobs:
+  avisar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Dependências
+        run: pip install --quiet "google-auth==2.40.3" "requests==2.32.4"
+      - name: Conferir e avisar
+        env:
+          FIREBASE_CONTA_SERVICO: ${{ secrets.FIREBASE_CONTA_SERVICO }}
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.simular }}" = "true" ]; then
+            python avisos/enviar.py --simular
+          else
+            python avisos/enviar.py
+          fi
+      - name: Gravar o estado
+        run: |
+          if ! git diff --quiet -- avisos/estado.json; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add avisos/estado.json
+            git commit -m "Avisos: estado atualizado"
+            git push
+          fi
