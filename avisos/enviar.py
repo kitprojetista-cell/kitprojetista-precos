@@ -107,7 +107,11 @@ def enviar(topico, titulo, texto, link=None, imagem=None):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--simular", action="store_true", help="mostra o que mandaria, sem enviar")
+    ap.add_argument("--testar-envio", action="store_true", help="manda um aviso de teste (não conta no limite semanal)")
     args = ap.parse_args()
+    if args.testar_envio:
+        print("Enviado:", enviar("novidades", "Teste da automação ✅", "Os avisos automáticos pelo GitHub estão funcionando."))
+        return
     e = ler_estado()
     t = agora()
 

@@ -17,6 +17,10 @@ on:
         description: "Só simular (mostra o que mandaria, sem enviar)"
         type: boolean
         default: true
+      testar_envio:
+        description: "Mandar um aviso de teste agora (não conta no limite semanal)"
+        type: boolean
+        default: false
 
 permissions:
   contents: write   # só para gravar avisos/estado.json
@@ -40,7 +44,9 @@ jobs:
         env:
           FIREBASE_CONTA_SERVICO: ${{ secrets.FIREBASE_CONTA_SERVICO }}
         run: |
-          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.simular }}" = "true" ]; then
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.testar_envio }}" = "true" ]; then
+            python avisos/enviar.py --testar-envio
+          elif [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.simular }}" = "true" ]; then
             python avisos/enviar.py --simular
           else
             python avisos/enviar.py
