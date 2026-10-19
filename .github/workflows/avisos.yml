@@ -18,7 +18,7 @@ on:
         type: boolean
         default: true
       testar_envio:
-        description: "Mandar um aviso de teste agora (não conta no limite semanal)"
+        description: "Mandar um aviso de teste agora, só para os celulares em modo de teste (não conta no limite)"
         type: boolean
         default: false
 
