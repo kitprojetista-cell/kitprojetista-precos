@@ -1,0 +1,126 @@
+# Tabela de preços automática: baixa o SINAPI do mês seguinte no site da Caixa, gera o precos.json,
+# confere e publica. Depois chama "Avisos do app" (que respeita o limite de 1 aviso por semana).
+# Se a tabela atrasar muito ou a conferência reprovar, abre uma tarefa (issue) e não publica nada.
+name: Tabela SINAPI
+
+on:
+  schedule:
+    - cron: "41 10 * * *"   # todo dia, 07:41 de Brasília
+  workflow_dispatch:
+    inputs:
+      mes:
+        description: "Mês a buscar (AAAA-MM). Vazio = o mês seguinte ao da tabela atual"
+        required: false
+        default: ""
+      publicar:
+        description: "Publicar se passar na conferência (desmarque para só testar)"
+        type: boolean
+        default: true
+
+permissions:
+  contents: write   # gravar o precos.json
+  issues: write     # avisar quando der problema
+  actions: write    # disparar "Avisos do app"
+
+concurrency:
+  group: sinapi
+  cancel-in-progress: false
+
+jobs:
+  atualizar:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Qual mês buscar
+        id: mes
+        run: |
+          python3 - >> "$GITHUB_OUTPUT" <<'PY'
+          import json, datetime as dt
+          a, m = map(int, json.load(open("precos.json"))["mes"].split("-"))
+          a, m = (a + 1, 1) if m == 12 else (a, m + 1)
+          # Prazo: se até o dia 25 do mês seguinte ao esperado ainda não saiu, avisa
+          pa, pm = (a + 1, 1) if m == 12 else (a, m + 1)
+          atrasado = dt.date.today() >= dt.date(pa, pm, 25)
+          forcado = "${{ inputs.mes }}".strip()
+          if forcado:
+              a, m = map(int, forcado.split("-"))
+              pa, pm = (a + 1, 1) if m == 12 else (a, m + 1)
+              atrasado = False
+          print(f"proximo={a}-{m:02d}")
+          print(f"atrasado={'sim' if atrasado else 'nao'}")
+          PY
+          cat "$GITHUB_OUTPUT"
+
+      - name: Baixar da Caixa
+        id: baixar
+        run: |
+          u="https://www.caixa.gov.br/Downloads/sinapi-relatorios-mensais/SINAPI-${{ steps.mes.outputs.proximo }}-formato-xlsx.zip"
+          curl -s -L -m 300 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" -c "$RUNNER_TEMP/cj" -b "$RUNNER_TEMP/cj" \
+               -o "$RUNNER_TEMP/sinapi.zip" -w "HTTP %{http_code}, %{size_download} bytes\n" "$u" || true
+          if file -b "$RUNNER_TEMP/sinapi.zip" | grep -q "Zip archive" && [ "$(stat -c%s "$RUNNER_TEMP/sinapi.zip")" -gt 1000000 ]; then
+            echo "achou=sim" >> "$GITHUB_OUTPUT"
+          else
+            echo "A tabela ${{ steps.mes.outputs.proximo }} ainda não está no site da Caixa."
+            echo "achou=nao" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Avisar atraso (uma vez)
+        if: steps.baixar.outputs.achou == 'nao' && steps.mes.outputs.atrasado == 'sim'
+        run: |
+          t="Tabela SINAPI ${{ steps.mes.outputs.proximo }} não baixou sozinha"
+          if [ -z "$(gh issue list --state open --search "$t in:title" --json number -q '.[].number')" ]; then
+            gh issue create --title "$t" --body "O robô não encontrou o arquivo SINAPI-${{ steps.mes.outputs.proximo }}-formato-xlsx.zip no site da Caixa. Pode ser atraso da Caixa ou mudança no endereço. Enquanto isso, dá para atualizar à mão (tools/GeradorPrecos/atualizar-precos.ps1). Esta tarefa fecha sozinha quando a tabela for publicada."
+          fi
+
+      - uses: actions/checkout@v5
+        if: steps.baixar.outputs.achou == 'sim'
+        with:
+          repository: kitprojetista-cell/kitprojetista
+          path: kit
+          sparse-checkout: tools/GeradorPrecos
+
+      - uses: actions/setup-dotnet@v4
+        if: steps.baixar.outputs.achou == 'sim'
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Gerar e conferir
+        id: gerar
+        if: steps.baixar.outputs.achou == 'sim'
+        run: |
+          dotnet run --project kit/tools/GeradorPrecos -c Release -- "$RUNNER_TEMP/sinapi.zip" "$RUNNER_TEMP/novo.json" | tee "$RUNNER_TEMP/gerador.txt" || true
+          if python3 sinapi/validar.py precos.json "$RUNNER_TEMP/novo.json" "${{ steps.mes.outputs.proximo }}" | tee "$RUNNER_TEMP/validar.txt"; then
+            echo "ok=sim" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=nao" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Avisar problema na conferência (uma vez)
+        if: steps.gerar.outputs.ok == 'nao'
+        run: |
+          t="Tabela SINAPI ${{ steps.mes.outputs.proximo }} reprovada na conferência"
+          if [ -z "$(gh issue list --state open --search "$t in:title" --json number -q '.[].number')" ]; then
+            { echo "O robô baixou a tabela, mas ela não passou na conferência e **não foi publicada**."; echo; echo '```'; tail -n 40 "$RUNNER_TEMP/validar.txt"; echo; tail -n 15 "$RUNNER_TEMP/gerador.txt"; echo '```'; } > "$RUNNER_TEMP/corpo.md"
+            gh issue create --title "$t" --body-file "$RUNNER_TEMP/corpo.md"
+          fi
+          exit 1
+
+      - name: Publicar
+        if: steps.gerar.outputs.ok == 'sim' && (github.event_name != 'workflow_dispatch' || inputs.publicar)
+        run: |
+          cp "$RUNNER_TEMP/novo.json" precos.json
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add precos.json
+          git commit -m "Preços de referência SINAPI ${{ steps.mes.outputs.proximo }} (automático)"
+          git push
+          # Fecha as tarefas de atraso/problema deste mês, se houver
+          for n in $(gh issue list --state open --search "SINAPI ${{ steps.mes.outputs.proximo }} in:title" --json number -q '.[].number'); do
+            gh issue close "$n" --comment "Tabela publicada automaticamente."
+          done
+          # O push do robô não dispara outros workflows: chama os avisos direto
+          gh workflow run avisos.yml -f simular=false
