@@ -17,6 +17,6 @@ O workflow `Avisos do app` (`.github/workflows/avisos.yml`) roda a cada 2 horas 
 - **Tabela de um mês novo** no `precos.json` → aviso no tópico `precos`.
 - **No máximo 1 aviso automático por semana** (somando os dois). O que cair na mesma semana espera.
 
-A chave da conta de serviço do Firebase fica no segredo `FIREBASE_CONTA_SERVICO` (nunca no código).
+A chave da conta de serviço do Firebase fica no segredo `FIREBASE_CONTA_SERV` (nunca no código).
 Para testar sem enviar: Actions › Avisos do app › Run workflow (com "Só simular" marcado).
 O estado (vídeos já vistos, último aviso) fica em `avisos/estado.json`.

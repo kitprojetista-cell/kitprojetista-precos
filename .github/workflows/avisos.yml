@@ -2,7 +2,7 @@
 #  A) vídeo novo do canal com #KPC no título ou na descrição  -> tópico "novidades"
 #  B) precos.json de um mês novo                               -> tópico "precos"
 # No máximo 1 aviso automático por semana (A + B). Regras em avisos/enviar.py.
-# A chave fica no segredo FIREBASE_CONTA_SERVICO (Settings › Secrets and variables › Actions).
+# A chave fica no segredo FIREBASE_CONTA_SERV (Settings › Secrets and variables › Actions).
 name: Avisos do app
 
 on:
@@ -42,7 +42,7 @@ jobs:
         run: pip install --quiet "google-auth==2.40.3" "requests==2.32.4"
       - name: Conferir e avisar
         env:
-          FIREBASE_CONTA_SERVICO: ${{ secrets.FIREBASE_CONTA_SERVICO }}
+          FIREBASE_CONTA_SERVICO: ${{ secrets.FIREBASE_CONTA_SERV }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ "${{ inputs.testar_envio }}" = "true" ]; then
             python avisos/enviar.py --testar-envio
