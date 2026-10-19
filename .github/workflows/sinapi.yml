@@ -87,13 +87,6 @@ jobs:
             gh issue create --title "$t" --body "O robô não encontrou o arquivo SINAPI-${{ steps.mes.outputs.proximo }}-formato-xlsx.zip no site da Caixa. Pode ser atraso da Caixa ou mudança no endereço. Enquanto isso, dá para atualizar à mão (tools/GeradorPrecos/atualizar-precos.ps1). Esta tarefa fecha sozinha quando a tabela for publicada."
           fi
 
-      - uses: actions/checkout@v5
-        if: steps.baixar.outputs.achou == 'sim'
-        with:
-          repository: kitprojetista-cell/kitprojetista
-          path: kit
-          sparse-checkout: tools/GeradorPrecos
-
       - uses: actions/setup-dotnet@v4
         if: steps.baixar.outputs.achou == 'sim'
         with:
@@ -103,7 +96,7 @@ jobs:
         id: gerar
         if: steps.baixar.outputs.achou == 'sim'
         run: |
-          dotnet run --project kit/tools/GeradorPrecos -c Release -- "$RUNNER_TEMP/sinapi.zip" "$RUNNER_TEMP/novo.json" | tee "$RUNNER_TEMP/gerador.txt" || true
+          dotnet run --project sinapi/GeradorPrecos -c Release -- "$RUNNER_TEMP/sinapi.zip" "$RUNNER_TEMP/novo.json" | tee "$RUNNER_TEMP/gerador.txt" || true
           if python3 sinapi/validar.py precos.json "$RUNNER_TEMP/novo.json" "${{ steps.mes.outputs.proximo }}" | tee "$RUNNER_TEMP/validar.txt"; then
             echo "ok=sim" >> "$GITHUB_OUTPUT"
           else

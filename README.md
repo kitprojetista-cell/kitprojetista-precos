@@ -20,3 +20,5 @@ O workflow `Avisos do app` (`.github/workflows/avisos.yml`) roda a cada 2 horas 
 A chave da conta de serviço do Firebase fica no segredo `FIREBASE_CONTA_SERV` (nunca no código).
 Para testar sem enviar: Actions › Avisos do app › Run workflow (com "Só simular" marcado).
 O estado (vídeos já vistos, último aviso) fica em `avisos/estado.json`.
+
+O robô usa o gerador em `sinapi/GeradorPrecos` (cópia do `tools/GeradorPrecos` do Kit). Mudou um código SINAPI? Atualize os dois.
