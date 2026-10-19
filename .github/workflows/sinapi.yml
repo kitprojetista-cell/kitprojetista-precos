@@ -59,8 +59,19 @@ jobs:
         id: baixar
         run: |
           u="https://www.caixa.gov.br/Downloads/sinapi-relatorios-mensais/SINAPI-${{ steps.mes.outputs.proximo }}-formato-xlsx.zip"
-          curl -s -L -m 300 -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64)" -c "$RUNNER_TEMP/cj" -b "$RUNNER_TEMP/cj" \
-               -o "$RUNNER_TEMP/sinapi.zip" -w "HTTP %{http_code}, %{size_download} bytes\n" "$u" || true
+          UA="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36"
+          # O site da Caixa às vezes responde "muitos acessos" (429): tenta algumas vezes, com calma
+          for tentativa in 1 2 3 4 5 6; do
+            rm -f "$RUNNER_TEMP/cj" "$RUNNER_TEMP/sinapi.zip"
+            curl -s -L -m 60 -A "$UA" -c "$RUNNER_TEMP/cj" -b "$RUNNER_TEMP/cj" -o /dev/null "https://www.caixa.gov.br/poder-publico/modernizacao-gestao/sinapi/Paginas/default.aspx" || true
+            sleep 5
+            curl -s -L -m 300 -A "$UA" -e "https://www.caixa.gov.br/poder-publico/modernizacao-gestao/sinapi/Paginas/default.aspx" \
+                 -c "$RUNNER_TEMP/cj" -b "$RUNNER_TEMP/cj" -o "$RUNNER_TEMP/sinapi.zip" -w "Tentativa $tentativa: HTTP %{http_code}, %{size_download} bytes\n" "$u" || true
+            if file -b "$RUNNER_TEMP/sinapi.zip" | grep -q "Zip archive"; then break; fi
+            # 404 de verdade (ainda não publicado) não precisa insistir
+            if grep -qi "não encontrad\|not found\|404" "$RUNNER_TEMP/sinapi.zip" 2>/dev/null && ! grep -qi "429\|too many" "$RUNNER_TEMP/sinapi.zip"; then break; fi
+            sleep $((tentativa * 40))
+          done
           if file -b "$RUNNER_TEMP/sinapi.zip" | grep -q "Zip archive" && [ "$(stat -c%s "$RUNNER_TEMP/sinapi.zip")" -gt 1000000 ]; then
             echo "achou=sim" >> "$GITHUB_OUTPUT"
           else
