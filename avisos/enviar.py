@@ -14,7 +14,7 @@ Regras:
 
 O estado (vídeos vistos, último aviso, mês já avisado) fica em avisos/estado.json, gravado de volta pelo workflow.
 """
-import argparse, datetime as dt, json, os, re, sys, urllib.request
+import argparse, datetime as dt, json, os, re, sys, time, urllib.request
 import xml.etree.ElementTree as ET
 
 AQUI = os.path.dirname(os.path.abspath(__file__))
@@ -51,8 +51,21 @@ def gravar_estado(e):
 
 
 def videos():
-    with urllib.request.urlopen(FEED, timeout=30) as r:
-        raiz = ET.fromstring(r.read())
+    """Vídeos do canal, ou None se o YouTube não responder (ele recusa a lista por alguns minutos, às vezes).
+    Sem a lista, a rodada segue com a tabela de preços: um vídeo novo fica para a próxima (a cada 2 horas)."""
+    for tentativa in range(3):
+        try:
+            with urllib.request.urlopen(FEED, timeout=30) as r:
+                return ler_feed(r.read())
+        except Exception as ex:  # 404/5xx/tempo esgotado do YouTube
+            print(f"YouTube não respondeu (tentativa {tentativa + 1}/3): {type(ex).__name__} {str(ex)[:120]}")
+            if tentativa < 2:
+                time.sleep(20)
+    return None
+
+
+def ler_feed(xml):
+    raiz = ET.fromstring(xml)
     lista = []
     for e in raiz.findall("a:entry", NS):
         vid = e.find("yt:videoId", NS).text
@@ -124,6 +137,11 @@ def main():
 
     # ── candidatos ──
     vids = videos()
+    if vids is None:
+        print("Sem a lista de vídeos nesta rodada: confere só a tabela de preços.")
+        if not e["iniciado"]:
+            return  # a primeira rodada precisa da lista para marcar os vídeos antigos
+        vids = []
     if not e["iniciado"]:
         e["videos_vistos"] = [v["id"] for v in vids]
         e["iniciado"] = True
