@@ -14,9 +14,10 @@
     "cKN9DC7g25I",
     "0Gd04k6np4g",
     "ziXFoBGyYGc",
-    "x3v_GWSjtxo"
+    "x3v_GWSjtxo",
+    "GUCfiTZlXB0"
   ],
-  "ultimo_aviso": "2026-10-28T17:03:18+00:00",
+  "ultimo_aviso": "2026-11-04T17:09:26+00:00",
   "mes_precos_avisado": "2026-09",
   "historico": [
     {
@@ -24,6 +25,12 @@
       "topico": "novidades",
       "texto": "Como testar o Kit Projetista GRÁTIS por 7 dias | Plugin para AutoCAD",
       "link": "https://www.youtube.com/watch?v=cKN9DC7g25I"
+    },
+    {
+      "data": "2026-11-04T17:09:26+00:00",
+      "topico": "novidades",
+      "texto": "Malha de coordenadas no AutoCAD em 31 segundos (importando KMZ do Google Earth)",
+      "link": "https://www.youtube.com/watch?v=GUCfiTZlXB0"
     }
   ]
 }
