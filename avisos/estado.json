@@ -18,8 +18,8 @@
     "GUCfiTZlXB0",
     "7Q5ESpDzO-8"
   ],
-  "ultimo_aviso": "2026-11-04T17:09:26+00:00",
-  "mes_precos_avisado": "2026-09",
+  "ultimo_aviso": "2026-11-13T18:04:37+00:00",
+  "mes_precos_avisado": "2026-10",
   "historico": [
     {
       "data": "2026-10-28T17:03:18+00:00",
@@ -32,6 +32,12 @@
       "topico": "novidades",
       "texto": "Malha de coordenadas no AutoCAD em 31 segundos (importando KMZ do Google Earth)",
       "link": "https://www.youtube.com/watch?v=GUCfiTZlXB0"
+    },
+    {
+      "data": "2026-11-13T18:04:37+00:00",
+      "topico": "precos",
+      "texto": "Os preços de referência (SINAPI) de outubro de 2026 já estão no app. Abra para ver os valores novos.",
+      "link": null
     }
   ]
 }
